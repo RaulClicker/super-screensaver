@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Screensaver Platina</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      display: flex;
+      height: 100vh;
+    }
+
+    #sidebar {
+      width: 300px;
+      background: #222;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    #screensaver {
+      flex: 1;
+      position: relative;
+      background: #000;
+    }
+
+    .trophy {
+      margin: 10px 0;
+      padding: 10px;
+      border-left: 4px solid #555;
+    }
+
+    .trophy.completed {
+      border-color: gold;
+      color: gold;
+    }
+
+    #logo {
+      position: absolute;
+      width: 100px;
+      height: 50px;
+      background: #0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h2>Troféus</h2>
+    <div class="trophy" id="t1">Primeiro Contato – Ver o símbolo bater numa borda</div>
+    <div class="trophy" id="t2">Sessão Iniciada – Assistir 10 minutos sem tocar no mouse</div>
+    <div class="trophy" id="t3">Viajante – Ver o logo visitar cada canto da tela</div>
+    <div class="trophy" id="t4">Quina Lendária – Bater na quina exata</div>
+    <p style="margin-top: 20px;">⏱ Tempo assistido: <span id="timeWatched">0</span> segundos</p>
+    <p>🎯 Quinas perfeitas: <span id="quinaCount">0</span></p>
+  </div>
+
+  <div id="screensaver">
+    <div id="logo">DVD</div>
+  </div>
+
+  <script>
+    const logo = document.getElementById("logo");
+    const screen = document.getElementById("screensaver");
+
+    let x = 100, y = 100;
+    let dx = 2, dy = 2;
+
+    const trophies = {
+      t1: false,
+      t2: false,
+      t4: false
+    };
+
+    let timeWatched = 0;
+    let quinaCount = 0;
+    let lastMouseMove = Date.now();
+
+    function loadProgress() {
+      const savedTrophies = localStorage.getItem("trophies");
+      const savedTime = localStorage.getItem("timeWatched");
+      const savedQuinas = localStorage.getItem("quinaCount");
+
+      if (savedTrophies) {
+        Object.assign(trophies, JSON.parse(savedTrophies));
+        for (const id in trophies) {
+          if (trophies[id]) document.getElementById(id).classList.add("completed");
+        }
+      }
+
+      if (savedTime) {
+        timeWatched = parseInt(savedTime);
+        document.getElementById("timeWatched").textContent = timeWatched;
+      }
+
+      if (savedQuinas) {
+        quinaCount = parseInt(savedQuinas);
+        document.getElementById("quinaCount").textContent = quinaCount;
+      }
+    }
+
+    function saveProgress() {
+      localStorage.setItem("trophies", JSON.stringify(trophies));
+      localStorage.setItem("timeWatched", timeWatched);
+      localStorage.setItem("quinaCount", quinaCount);
+    }
+
+    function moveLogo() {
+      const rect = screen.getBoundingClientRect();
+      const logoW = logo.offsetWidth;
+      const logoH = logo.offsetHeight;
+
+      x += dx;
+      y += dy;
+
+      let hitBorda = false;
+
+      if (x + logoW >= rect.width || x <= 0) {
+        dx *= -1;
+        hitBorda = true;
+      }
+
+      if (y + logoH >= rect.height || y <= 0) {
+        dy *= -1;
+        hitBorda = true;
+      }
+
+      if (hitBorda && !trophies.t1) {
+        trophies.t1 = true;
+        document.getElementById("t1").classList.add("completed");
+        saveProgress();
+      }
+
+      // Quina perfeita
+      const hitQuina = (
+        (x <= 0 && y <= 0) || // topo esquerdo
+        (x + logoW >= rect.width && y <= 0) || // topo direito
+        (x <= 0 && y + logoH >= rect.height) || // baixo esquerdo
+        (x + logoW >= rect.width && y + logoH >= rect.height) // baixo direito
+      );
+
+      if (hitQuina) {
+        quinaCount++;
+        document.getElementById("quinaCount").textContent = quinaCount;
+
+        if (!trophies.t4) {
+          trophies.t4 = true;
+          document.getElementById("t4").classList.add("completed");
+        }
+
+        saveProgress();
+      }
+
+      logo.style.left = x + "px";
+      logo.style.top = y + "px";
+
+      requestAnimationFrame(moveLogo);
+    }
+
+    function startTimer() {
+      setInterval(() => {
+        const now = Date.now();
+        if (now - lastMouseMove > 1000) {
+          timeWatched++;
+          document.getElementById("timeWatched").textContent = timeWatched;
+          saveProgress();
+
+          if (timeWatched >= 600 && !trophies.t2) {
+            trophies.t2 = true;
+            document.getElementById("t2").classList.add("completed");
+            saveProgress();
+          }
+        }
+      }, 1000);
+    }
+
+    document.addEventListener("mousemove", () => {
+      lastMouseMove = Date.now();
+    });
+
+    loadProgress();
+    moveLogo();
+    startTimer();
+  </script>
+</body>
+</html>
